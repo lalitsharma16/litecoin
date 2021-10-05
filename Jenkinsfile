@@ -1,9 +1,9 @@
 pipeline {
     agent any
-    // def dockerImage
     environment{
         IMAGENAME = "gamesondocker/litecoin"
         TAG = "0.18.2"
+        MANIFEST_FILE="litecoin.yml"
         registryCredential = 'dockerhub-access'
         dockerImage = ''
         dockerHome = ''
@@ -15,33 +15,6 @@ pipeline {
              git([url: 'https://github.com/lalitsharma16/litecoin.git', branch: 'dev', credentialsId: 'mygithub-token'])
           }    
         }
-        
- //       stage('testing') {
- //           steps {
- //                sh """
- //                  pwd
-   //                ls -ltr
-     //           """
-       //     }
-        //}
-        
-//        stage('Initialize'){
-//            steps {
-//                script{
-//        dockerHome = tool 'myDocker'
-//        env.PATH = "${dockerHome}/bin:${env.PATH}"
-//                }
-//            }
-//        }
-        
-        //stage('Build') {
-        //    steps {
-        //      sh """
-        //       docker build -t ${IMAGENAME}:${TAG} .
-        //       docker push ${IMAGENAME}:${TAG}
-        //      """
-        //    }
-        //}
 
         stage('Build Docker Image'){
           steps{
@@ -64,15 +37,37 @@ pipeline {
         stage('Docker image Push'){
             steps{
                 script{
-                // withCredentials([string(credentialsId: 'nexus-pwd', variable: 'nexusPwd')]) {
-                //     sh "docker login -u admin -p ${nexusPwd} ${NEXUS_URL}"
-                //     sh "docker push ${IMAGE_URL_WITH_TAG}"
                   docker.withRegistry('', registryCredential) {
                     dockerImage.push("$TAG")
                     dockerImage.push('latest')
                   }
                 }
             }
+        }
+        
+        stage('Run kubectl') {
+           steps {
+               script{
+                   try{
+                  sh "/usr/local/bin/kubectl apply -f $MANIFEST_FILE"
+                   }catch(error){
+                  currentBuild.result = 'FAILURE'
+                  sh """
+                    echo FAILURE
+                  """
+                   }
+               }
+           }
+        }
+
+        
+        stage('Remove Unused docker image') {
+          steps{
+              script{
+                sh "docker rmi $IMAGENAME:$TAG"
+                sh "docker rmi $IMAGENAME:latest"
+              }
+          }
         }
     }
 }
