@@ -68,7 +68,7 @@ pipeline {
                 //     sh "docker login -u admin -p ${nexusPwd} ${NEXUS_URL}"
                 //     sh "docker push ${IMAGE_URL_WITH_TAG}"
                   docker.withRegistry('', registryCredential) {
-                    dockerImage.push("$BUILD_NUMBER")
+                    dockerImage.push("$TAG")
                     dockerImage.push('latest')
                   }
                 }
